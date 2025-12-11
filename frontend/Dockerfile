@@ -28,6 +28,9 @@ RUN npx prisma generate --schema=./prisma/schema.prisma
 RUN npx prisma generate --schema=./prisma/twitter-schema.prisma
 
 # Build Next.js
+# Set placeholder database URLs for build-time (Prisma schema validation)
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public"
+ENV TWITTER_DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=twitter"
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
