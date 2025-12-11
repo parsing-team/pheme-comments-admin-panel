@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model channel_post {
+  id              Int       @id(map: "channel_post_pk") @unique(map: "channel_post_id_idx") @default(autoincrement())
+  channel_id      Int?
+  telegram_id     BigInt?
+  publish_date    DateTime? @db.Timestamp(6)
+  date            DateTime? @db.Timestamp(6)
+  number_comments String?   @db.VarChar
+  
+  channel         channels? @relation(fields: [channel_id], references: [id])
+  comments        posts[]
+  archived_comments posts_archive[] @relation("posts_archive_to_channel_post")
+}
+
+model channel_post_archive {
+  id              Int       @id(map: "channel_post_pk_1") @unique(map: "channel_post_id_idx_1") @default(autoincrement())
+  channel_id      Int?
+  telegram_id     BigInt?
+  publish_date    DateTime? @db.Timestamp(6)
+  date            DateTime? @db.Timestamp(6)
+  number_comments String?   @db.VarChar
+}
+
+model channels {
+  id          Int       @id(map: "channels_pk") @unique(map: "channels_id_idx") @default(autoincrement())
+  name        String?   @db.VarChar
+  main_id     Int?
+  timestamp   DateTime? @db.Timestamp(6)
+  subscribers String?   @db.VarChar
+  min_id_post BigInt?
+  state       Int?      @default(0) @db.SmallInt
+  type        String?   @db.VarChar
+  max_id_post Int?
+  
+  posts       channel_post[]
+  stats       channel_stats[]
+
+  @@index([name])
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+model posts {
+  title         String?   @db.VarChar
+  plain_content String?   @db.VarChar
+  video_data    Json?
+  image_data    String[]  @db.VarChar
+  publish_date  DateTime? @db.Timestamp(6)
+  lang_proba    Decimal?  @db.Decimal
+  lang          String?   @db.VarChar
+  id            Int       @default(autoincrement())
+  date          DateTime  @default(dbgenerated("transaction_timestamp()")) @db.Timestamp(6)
+  source_id     Int?
+  permalink     String?   @db.VarChar
+  mlready       Int?      @default(1) @db.SmallInt
+  telegram_id   BigInt?
+  user_id       Int?
+  state         Int?      @default(1) @db.SmallInt
+  type          String?   @default("comment") @db.VarChar
+
+  user          users?        @relation(fields: [user_id], references: [id])
+  channel_post  channel_post? @relation(fields: [source_id], references: [id])
+
+  @@id([id, date], map: "telegram_posts_partitioning_pkey")
+  @@unique([id, date], map: "telegram_posts_partitioning_id_idx")
+  @@index([date], map: "telegram_posts_partitioning_date_idx")
+  @@index([permalink], map: "telegram_posts_partitioning_permalink_idx")
+  @@index([publish_date], map: "telegram_posts_partitioning_publish_date_idx")
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+model posts_archive {
+  title         String?   @db.VarChar
+  plain_content String?   @db.VarChar
+  video_data    Json?
+  image_data    String[]  @db.VarChar
+  publish_date  DateTime? @db.Timestamp(6)
+  lang_proba    Decimal?  @db.Decimal
+  lang          String?   @db.VarChar
+  id            Int       @default(autoincrement())
+  date          DateTime  @default(dbgenerated("transaction_timestamp()")) @db.Timestamp(6)
+  source_id     Int?
+  permalink     String?   @db.VarChar
+  mlready       Int?      @default(1) @db.SmallInt
+  telegram_id   BigInt?
+  user_id       Int?
+  state         Int?      @default(1) @db.SmallInt
+
+  user          users?        @relation("posts_archive_to_users", fields: [user_id], references: [id])
+  channel_post  channel_post? @relation("posts_archive_to_channel_post", fields: [source_id], references: [id])
+
+  @@id([id, date], map: "telegram_posts_partitioning_pkey_1")
+  @@unique([id, date], map: "telegram_posts_partitioning_id_idx_1")
+  @@index([date], map: "telegram_posts_partitioning_date_idx_1")
+  @@index([permalink], map: "telegram_posts_partitioning_permalink_idx_1")
+  @@index([publish_date], map: "telegram_posts_partitioning_publish_date_idx_1")
+}
+
+model users {
+  id              Int       @id(map: "users_pk") @unique(map: "users_id_idx") @default(autoincrement())
+  telegram_id     BigInt?
+  recent_activity DateTime? @db.Timestamp(6)
+  number_message  Int?      @default(0)
+  username        String?   @db.VarChar
+  first_name      String?   @db.VarChar
+  last_name       String?   @db.VarChar
+  phone           String?   @db.VarChar
+  bot             Boolean?
+  scam            Boolean?
+  photo           String?   @db.VarChar
+  
+  comments        posts[]
+  archived_comments posts_archive[] @relation("posts_archive_to_users")
+  
+  stats           user_stats[]
+
+  @@index([telegram_id])
+}
+
+model user_stats {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  analyzed_at     DateTime @default(now())
+  suspicion_score Float
+  metrics         Json
+
+  user            users    @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([suspicion_score])
+}
+
+model channel_stats {
+  id              Int      @id @default(autoincrement())
+  channel_id      Int
+  analyzed_at     DateTime @default(now())
+  suspicion_score Float
+  metrics         Json
+
+  channel         channels @relation(fields: [channel_id], references: [id])
+
+  @@index([channel_id])
+  @@index([suspicion_score])
+}

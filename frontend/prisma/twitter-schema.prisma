@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/twitter-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TWITTER_DATABASE_URL")
+}
+
+model profiles {
+  id                       Int       @id @default(autoincrement())
+  profile_id               BigInt    @unique
+  name                     String?   @db.VarChar
+  username                 String?   @db.VarChar
+  joined                   DateTime? @db.Timestamp(6)
+  is_verified              Boolean?
+  location                 String?   @db.VarChar
+  description_profile      String?
+  followers_count          Int?
+  following_count          Int?
+  media_count              Int?
+  favourites_count         Int?
+  profile_description_urls String[]
+  profile_urls             String[]
+  in_processing            Boolean?
+  account_based            String?   @db.VarChar
+  connected_via            String?   @db.VarChar
+  username_changes_count   String?   @db.VarChar
+  username_last_changed    DateTime? @db.Timestamp(6)
+
+  account_status           String?   @default("active") @db.VarChar(20)
+
+  comments              comments[]
+  bot_analysis_cache    bot_analysis_cache?
+  bot_analysis_history  bot_analysis_history[]
+  fanbase_memberships   fanbase_memberships[]
+}
+
+model comments {
+  id                     Int       @id @default(autoincrement())
+  tweet_id               BigInt    @unique
+  plain_content          String?
+  views_tweet            BigInt?
+  bookmark_count         Int?
+  like_count             Int?
+  is_quote               Boolean?
+  quote_count            Int?
+  comment_count          Int?
+  retweet_count          Int?
+  hashtags               String[]
+  urls                   String[]
+  user_mentions          String[]
+  lang                   String?   @db.VarChar
+  lang_proba             Decimal?  @db.Decimal
+  mlready                Int       @default(1) @db.SmallInt
+  date                   DateTime  @db.Timestamp(6)
+  reply_comment_id       BigInt?
+  reply_comment_username String?   @db.VarChar
+  reply_comment_userid   BigInt?
+  publish_date           DateTime? @db.Timestamp(6)
+  permalink              String?   @db.VarChar
+  is_root_post           Boolean?
+  is_reposted            Boolean?
+  reposted_tweet_id      BigInt?
+  author_post_userid     BigInt?
+  author_post_username   String?   @db.VarChar
+  author_post_name       String?   @db.VarChar
+  author_postid          Int?
+
+  profile profiles? @relation(fields: [author_postid], references: [id])
+}
+
+model bot_analysis_cache {
+  id                Int       @id @default(autoincrement())
+  profile_id        Int       @unique
+  bot_score         Int
+  risk_level        String    @db.VarChar(20)
+  analysis_data     Json
+  analyzed_at       DateTime  @default(now()) @db.Timestamp(6)
+  last_tweet_date   DateTime? @db.Timestamp(6)
+  tweet_count       Int?
+  created_at        DateTime  @default(now()) @db.Timestamp(6)
+  updated_at        DateTime  @updatedAt @db.Timestamp(6)
+  
+  profile           profiles  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  
+  @@index([profile_id])
+  @@index([bot_score(sort: Desc)])
+  @@index([risk_level])
+}
+
+model bot_analysis_history {
+  id                Int       @id @default(autoincrement())
+  profile_id        Int
+  bot_score         Int
+  risk_level        String    @db.VarChar(20)
+  analysis_data     Json
+  analyzed_at       DateTime  @default(now()) @db.Timestamp(6)
+  tweet_count       Int?
+  score_change      Int?
+  created_at        DateTime  @default(now()) @db.Timestamp(6)
+  
+  profile           profiles  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  
+  @@index([profile_id, analyzed_at(sort: Desc)])
+  @@index([analyzed_at(sort: Desc)])
+}
+
+model fanbase_runs {
+  id              Int       @id @default(autoincrement())
+  created_at      DateTime  @default(now()) @db.Timestamp(6)
+  source          String?   @db.VarChar(50)
+  node_count      Int?
+  edge_count      Int?
+  method          String?   @db.VarChar(50)
+  params          Json?
+  time_from       DateTime? @db.Timestamp(6)
+  time_to         DateTime? @db.Timestamp(6)
+  is_current      Boolean   @default(false)
+  notes           String?
+  completed_at    DateTime? @db.Timestamp(6)
+  
+  communities     fanbase_communities[]
+  memberships     fanbase_memberships[]
+  
+  @@index([is_current])
+  @@index([created_at(sort: Desc)])
+}
+
+model fanbase_communities {
+  id              Int       @id @default(autoincrement())
+  run_id          Int
+  label           String?   @db.VarChar(100)
+  member_count    Int?
+  leader_count    Int?
+  density         Float?
+  reciprocity     Float?
+  clustering      Float?
+  avg_weight      Float?
+  leader_username String?   @db.VarChar(100)
+  top_hashtags    Json?
+  metrics         Json?
+  
+  run             fanbase_runs @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  memberships     fanbase_memberships[]
+  
+  @@index([run_id])
+  @@index([member_count(sort: Desc)])
+}
+
+model fanbase_memberships {
+  run_id          Int
+  community_id    Int
+  profile_id      Int
+  role            String?   @db.VarChar(20)
+  leadership_score Float?
+  support_score   Float?
+  local_activity  Int?
+  share_in_cluster Float?
+  bot_score       Int?
+  bot_risk_level  String?   @db.VarChar(20)
+  is_suspicious   Boolean?
+  features        Json?
+  
+  run             fanbase_runs @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  community       fanbase_communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
+  profile         profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  
+  @@id([run_id, community_id, profile_id])
+  @@index([profile_id, run_id])
+  @@index([community_id])
+  @@index([bot_score(sort: Desc)])
+}

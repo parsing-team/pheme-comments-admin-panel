@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/input-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TWITTER_INPUT_DATABASE_URL")
+}
+
+model future_sources {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique @db.VarChar
+  count_followers String?  @db.VarChar
+  is_ready        Boolean?
+  profiles_id     String?  @db.VarChar
+}
+
+model rss_news {
+  id           Int       @id @default(autoincrement())
+  link         String    @unique @db.VarChar
+  publish_date DateTime? @db.Timestamp(6)
+  date         DateTime? @db.Timestamp(6)
+}
+
+model twitter_action_stats {
+  id                Int                @id @default(autoincrement())
+  likes             Int?
+  views             Int?
+  comments          Int?
+  reposts           Int?
+  saveds            Int?
+  post_id           Int?
+  permalink         String?            @db.VarChar
+  source_id         Int?
+  rev               Int?
+  date              DateTime?          @db.Timestamp(6)
+  twitter_profiles  twitter_profiles?  @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+model twitter_posts {
+  id               Int               @default(autoincrement())
+  title            String?           @db.VarChar
+  plain_content    String?           @db.VarChar
+  image_data       String[]          @db.VarChar
+  publish_date     DateTime?         @db.Timestamp(6)
+  lang             String?           @db.VarChar
+  lang_proba       Decimal?          @db.Decimal
+  date             DateTime          @db.Timestamp(6)
+  source_id        Int?
+  permalink        String?           @db.VarChar
+  mlready          Int               @default(1) @db.SmallInt
+  twitter_profiles twitter_profiles? @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "twitter_source_id_fkey")
+
+  @@id([id, date], map: "twitter_pkey")
+  @@index([date], map: "idx_twitter_posts_2024_09_date")
+  @@index([publish_date], map: "idx_twitter_posts_2024_09_publish_date")
+  @@index([date], map: "idx_twitter_posts_2024_10_date")
+  @@index([publish_date], map: "idx_twitter_posts_2024_10_publish_date")
+  @@index([date], map: "idx_twitter_posts_2024_11_date")
+  @@index([publish_date], map: "idx_twitter_posts_2024_11_publish_date")
+  @@index([date], map: "idx_twitter_posts_2024_12_date")
+  @@index([publish_date], map: "idx_twitter_posts_2024_12_publish_date")
+  @@index([date], map: "idx_twitter_posts_2025_01_date")
+  @@index([publish_date], map: "idx_twitter_posts_2025_01_publish_date")
+  @@index([source_id, publish_date], map: "idx_twitter_posts_source_date")
+  @@index([date])
+  @@index([permalink])
+}
+
+
+
+model twitter_profiles {
+  id                             Int                              @id @default(autoincrement())
+  type                           String?                          @db.VarChar
+  name                           String?                          @db.VarChar
+  profiles_id                    String?                          @db.VarChar
+  active                         Int?
+  updated                        DateTime?                        @db.Timestamp(6)
+  range_posting_minutes          Unsupported("interval")?
+  twitter_action_stats           twitter_action_stats[]
+  twitter_posts                  twitter_posts[]
+  twitter_profiles_stats         twitter_profiles_stats[]
+  twitter_profiles_twitter_posts twitter_profiles_twitter_posts[]
+}
+
+model twitter_profiles_stats {
+  id                 Int               @id @default(autoincrement())
+  twitter_profilesid Int?
+  date               DateTime?         @db.Timestamp(6)
+  subscription       Int?
+  twitter_profiles   twitter_profiles? @relation(fields: [twitter_profilesid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model twitter_profiles_temp {
+  id   Int     @id @default(autoincrement())
+  name String? @unique(map: "twitter_profiles_temp_un") @db.VarChar
+}
+
+model twitter_profiles_twitter_posts {
+  id                 Int               @id @default(autoincrement())
+  post_id            String            @unique @db.VarChar
+  likes              String?           @db.VarChar
+  views              String?           @db.VarChar
+  reposts            String?           @db.VarChar
+  comments           String?           @db.VarChar
+  saveds             String?           @db.VarChar
+  twitter_profilesid Int?
+  twitter_postid     Int?
+  isvideo            Boolean?
+  is_repost          Boolean?
+  source_link        String?           @db.VarChar
+  twitter_profiles   twitter_profiles? @relation(fields: [twitter_profilesid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([twitter_postid])
+  @@index([twitter_profilesid])
+}
+
+model twitter_relation_reply {
+  id               Int       @id @default(autoincrement())
+  name             String?   @db.VarChar
+  post_type        String?   @db.VarChar
+  plain_context    String?
+  replies          Int?
+  reposts          Int?
+  likes            Int?
+  bookmarks        Int?
+  views            Int?
+  publish_date     DateTime? @db.Timestamp(6)
+  post_id          String?   @unique @db.VarChar
+  source_id        String?   @db.VarChar
+  reposted_profile String?   @db.VarChar
+  root_post        String?   @db.VarChar
+}
+
+model twitter_relationships_reply_profiles {
+  id              Int       @id @default(autoincrement())
+  profile_id      String?   @unique @db.VarChar
+  name            String?   @db.VarChar
+  username        String?   @db.VarChar
+  followers_count String?   @db.VarChar
+  following_count String?   @db.VarChar
+  location        String?   @db.VarChar
+  birthdate       DateTime? @db.Timestamp(6)
+  description     String?
+  joined          DateTime? @db.Timestamp(6)
+  url             String?   @db.VarChar
+  category        String?   @db.VarChar
+}
