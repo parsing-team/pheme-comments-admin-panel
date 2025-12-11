@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { getFanbaseRuns } from '@/app/twitter/actions'
 import { formatDateTime } from '@/lib/formatDate'
 
+// Force dynamic rendering - this page requires database access
+export const dynamic = 'force-dynamic';
+
 export default async function FanbaseClusteringHistoryPage() {
     const runs = await getFanbaseRuns(50)
 
